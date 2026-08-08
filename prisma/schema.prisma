@@ -1,0 +1,721 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  phone            String           @unique
+  passwordHash     String
+  name             String
+  role             UserRole
+  avatar           String?
+  language         String           @default("en")
+  isOnline         Boolean          @default(false)
+  lastSeen         DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  adminProfile     AdminProfile?
+  auditLogs        AuditLog[]       @relation("Auditor")
+  customerBookings Booking[]        @relation("CustomerBookings")
+  cartItems        CartItem[]
+  customerProfile  CustomerProfile?
+  deliveryProfile  DeliveryProfile?
+  farmerProfile    FarmerProfile?
+  fisherProfile    FisherProfile?
+  receivedMessages Message[]        @relation("ReceivedMessages")
+  sentMessages     Message[]        @relation("SentMessages")
+  notifications    Notification[]
+  customerOrders   Order[]          @relation("CustomerOrders")
+  reviewsGiven     Review[]         @relation("Reviewer")
+}
+
+model CustomerProfile {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String
+  pincode           String
+  latitude          Float?
+  longitude         Float?
+  deliveryRadiusKm  Int        @default(25)
+  preferredLanguage String     @default("en")
+  totalOrders       Int        @default(0)
+  totalSpent        Float      @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wishlists         Wishlist[]
+}
+
+model FarmerProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  verificationStatus VerificationStatus @default(PENDING)
+  farmName           String
+  farmAddress        String
+  farmCity           String
+  farmState          String
+  farmPincode        String
+  latitude           Float?
+  longitude          Float?
+  farmSizeAcres      Float?
+  farmingType        String?
+  certifications     String             @default("{}")
+  farmEquipment      String             @default("{}")
+  productCategories  String             @default("[]")
+  totalSales         Int                @default(0)
+  totalRevenue       Float              @default(0)
+  bankAccount        String?
+  ifscCode           String?
+  upiId              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trustScore         FarmerTrustScore?
+}
+
+model FisherProfile {
+  id                 String               @id @default(cuid())
+  userId             String               @unique
+  verificationStatus VerificationStatus   @default(PENDING)
+  boatName           String?
+  boatNumber         String?
+  boatType           String?
+  fishingArea        String?
+  harborAddress      String
+  harborCity         String
+  harborState        String
+  harborPincode      String
+  latitude           Float?
+  longitude          Float?
+  certifications     String               @default("{}")
+  boatEquipment      String               @default("{}")
+  productCategories  String               @default("[]")
+  totalSales         Int                  @default(0)
+  totalRevenue       Float                @default(0)
+  bankAccount        String?
+  ifscCode           String?
+  upiId              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  ignoredOrders      FisherIgnoredOrder[]
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suspensions        FisherSuspension[]
+  trustScore         FisherTrustScore?
+  warnings           FisherWarning[]
+}
+
+model DeliveryProfile {
+  id                 String                @id @default(cuid())
+  userId             String                @unique
+  vehicleType        String
+  vehicleNumber      String
+  licenseNumber      String
+  baseCity           String
+  latitude           Float?
+  longitude          Float?
+  isAvailable        Boolean               @default(true)
+  monthlySalary      Float                 @default(0)
+  totalEarnings      Float                 @default(0)
+  totalDeliveries    Int                   @default(0)
+  currentLatitude    Float?
+  currentLongitude   Float?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  deliveries         DeliveryAssignment[]
+  performanceRecords DeliveryPerformance[]
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryRecords      DeliverySalary[]
+}
+
+model AdminProfile {
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  adminLevel        Int                @default(1)
+  department        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderationActions ModerationAction[]
+}
+
+model Product {
+  id                String           @id @default(cuid())
+  sellerId          String
+  sellerType        String
+  category          ProductCategory
+  name              String
+  description       String?
+  price             Float
+  unit              String
+  quantityAvailable Float            @default(0)
+  minOrderQty       Float            @default(1)
+  maxOrderQty       Float?
+  images            String           @default("[]")
+  isOrganic         Boolean          @default(false)
+  harvestDate       DateTime?
+  catchDate         DateTime?
+  freshnessScore    Float?
+  storageTemp       Float?
+  originLocation    String?
+  tags              String           @default("[]")
+  isActive          Boolean          @default(true)
+  viewsCount        Int              @default(0)
+  soldCount         Int              @default(0)
+  carbonScore       Float?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  aiPriceHistory    AiPriceHistory[]
+  orderItems        OrderItem[]
+  reviews           Review[]
+  wishlists         Wishlist[]
+}
+
+model Order {
+  id                 String               @id @default(cuid())
+  orderNumber        String               @unique
+  customerId         String
+  sellerId           String
+  sellerType         String
+  status             OrderStatus          @default(PENDING)
+  subtotal           Float
+  deliveryFee        Float                @default(0)
+  totalAmount        Float
+  deliveryAddress    String
+  deliveryLat        Float?
+  deliveryLng        Float?
+  deliveryDistanceKm Float?
+  estimatedDelivery  DateTime?
+  actualDelivery     DateTime?
+  notes              String?
+  cancelReason       String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deliveries         DeliveryAssignment[]
+  customer           User                 @relation("CustomerOrders", fields: [customerId], references: [id])
+  items              OrderItem[]
+  payments           Payment[]
+  reviews            Review?
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  price       Float
+  quantity    Float
+  unit        String
+  subtotal    Float
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
+}
+
+model Booking {
+  id              String          @id @default(cuid())
+  bookingNumber   String          @unique
+  customerId      String
+  sellerId        String
+  sellerType      String
+  category        ProductCategory
+  description     String
+  animalType      String?
+  quantity        Float
+  unit            String
+  expectedPrice   Float?
+  finalPrice      Float?
+  expectedDate    DateTime?
+  scheduledPickup DateTime?
+  status          BookingStatus   @default(PENDING)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  customer        User            @relation("CustomerBookings", fields: [customerId], references: [id])
+}
+
+model CartItem {
+  id          String   @id @default(cuid())
+  userId      String
+  productId   String
+  productName String
+  price       Float
+  quantity    Float
+  unit        String
+  sellerId    String
+  sellerType  String
+  addedAt     DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryAssignment {
+  id               String          @id @default(cuid())
+  orderId          String
+  deliveryPersonId String
+  status           DeliveryStatus  @default(ASSIGNED)
+  pickupAddress    String
+  pickupLat        Float?
+  pickupLng        Float?
+  dropAddress      String
+  dropLat          Float?
+  dropLng          Float?
+  routeDistanceKm  Float?
+  estimatedTimeMin Int?
+  actualTimeMin    Int?
+  pickedUpAt       DateTime?
+  deliveredAt      DateTime?
+  failedReason     String?
+  customerRating   Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deliveryPerson   DeliveryProfile @relation(fields: [deliveryPersonId], references: [id])
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryPerformance {
+  id                 String          @id @default(cuid())
+  deliveryPersonId   String
+  month              String
+  ordersCompleted    Int             @default(0)
+  ordersCancelled    Int             @default(0)
+  avgDeliveryTimeMin Float?
+  avgRating          Float?
+  punctualityScore   Float?
+  totalDistanceKm    Float           @default(0)
+  incentiveEarned    Float           @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  deliveryPerson     DeliveryProfile @relation(fields: [deliveryPersonId], references: [id], onDelete: Cascade)
+}
+
+model DeliverySalary {
+  id               String          @id @default(cuid())
+  deliveryPersonId String
+  month            String
+  baseSalary       Float
+  performanceBonus Float           @default(0)
+  incentives       Float           @default(0)
+  deductions       Float           @default(0)
+  totalSalary      Float
+  status           String          @default("PENDING")
+  paidAt           DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deliveryPerson   DeliveryProfile @relation(fields: [deliveryPersonId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?       @unique
+  sellerPayout  Float         @default(0)
+  platformFee   Float         @default(0)
+  deliveryFee   Float         @default(0)
+  paidAt        DateTime?
+  refundedAt    DateTime?
+  refundAmount  Float?
+  refundReason  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model FarmerTrustScore {
+  id                   String        @id @default(cuid())
+  farmerId             String        @unique
+  overallScore         Float         @default(50)
+  orderAcceptanceRate  Float         @default(100)
+  avgDeliveryTimeHours Float?
+  productQualityScore  Float         @default(50)
+  avgCustomerRating    Float?
+  complaintRate        Float         @default(0)
+  cancellationRate     Float         @default(0)
+  totalReviews         Int           @default(0)
+  lastCalculatedAt     DateTime      @default(now())
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  farmer               FarmerProfile @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+}
+
+model FisherTrustScore {
+  id                   String        @id @default(cuid())
+  fisherId             String        @unique
+  overallScore         Float         @default(50)
+  orderAcceptanceRate  Float         @default(100)
+  avgDeliveryTimeHours Float?
+  productQualityScore  Float         @default(50)
+  avgCustomerRating    Float?
+  complaintRate        Float         @default(0)
+  cancellationRate     Float         @default(0)
+  totalReviews         Int           @default(0)
+  lastCalculatedAt     DateTime      @default(now())
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  fisher               FisherProfile @relation(fields: [fisherId], references: [id], onDelete: Cascade)
+}
+
+model FisherWarning {
+  id              String          @id @default(cuid())
+  fisherId        String
+  warningNumber   Int
+  ignoredOrders   Int
+  severity        WarningSeverity @default(MEDIUM)
+  reason          String
+  issuedByAdminId String?
+  issuedAt        DateTime        @default(now())
+  acknowledgedAt  DateTime?
+  fisher          FisherProfile   @relation(fields: [fisherId], references: [id], onDelete: Cascade)
+}
+
+model FisherSuspension {
+  id              String        @id @default(cuid())
+  fisherId        String
+  warningCount    Int
+  suspensionStart DateTime
+  suspensionEnd   DateTime
+  durationDays    Int           @default(2)
+  reason          String
+  isActive        Boolean       @default(true)
+  liftedByAdminId String?
+  liftedAt        DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  fisher          FisherProfile @relation(fields: [fisherId], references: [id], onDelete: Cascade)
+}
+
+model FisherIgnoredOrder {
+  id        String        @id @default(cuid())
+  fisherId  String
+  orderId   String?
+  bookingId String?
+  ignoredAt DateTime      @default(now())
+  processed Boolean       @default(false)
+  fisher    FisherProfile @relation(fields: [fisherId], references: [id], onDelete: Cascade)
+}
+
+model CircularListing {
+  id           String             @id @default(cuid())
+  listerId     String
+  listerType   String
+  category     ProductCategory
+  title        String
+  description  String
+  quantity     Float
+  unit         String
+  exchangeType ExchangeType       @default(SELL)
+  wantedItem   String?
+  price        Float?
+  images       String             @default("[]")
+  location     String
+  latitude     Float?
+  longitude    Float?
+  isActive     Boolean            @default(true)
+  viewsCount   Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  exchanges    CircularExchange[]
+}
+
+model CircularExchange {
+  id              String          @id @default(cuid())
+  listingId       String
+  buyerId         String
+  buyerType       String
+  quantity        Float
+  unit            String
+  price           Float?
+  exchangeDetails String?
+  status          String          @default("COMPLETED")
+  completedAt     DateTime?       @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  listing         CircularListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model AiPriceHistory {
+  id               String   @id @default(cuid())
+  productId        String
+  price            Float
+  suggestedPrice   Float?
+  season           String?
+  demandLevel      String?
+  weatherCondition String?
+  festivalFactor   String?
+  calculatedAt     DateTime @default(now())
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model AiDemandPrediction {
+  id              String          @id @default(cuid())
+  category        ProductCategory
+  region          String
+  predictedDemand Float
+  currentSupply   Float?
+  confidence      Float
+  predictionDate  DateTime
+  forDate         DateTime
+  factors         String          @default("{}")
+  createdAt       DateTime        @default(now())
+}
+
+model AiFreshnessLog {
+  id                   String    @id @default(cuid())
+  productId            String
+  harvestCatchTime     DateTime?
+  storageTemp          Float?
+  storageDurationHours Float?
+  distanceKm           Float?
+  freshnessScore       Float
+  degradationRate      Float?
+  recommendation       String?
+  calculatedAt         DateTime  @default(now())
+}
+
+model AiMatchingLog {
+  id         String   @id @default(cuid())
+  customerId String
+  productId  String
+  sellerId   String
+  matchType  String
+  matchScore Float
+  factors    String   @default("{}")
+  createdAt  DateTime @default(now())
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  orderId         String?  @unique
+  productId       String?
+  reviewerId      String
+  revieweeId      String
+  rating          Int
+  qualityRating   Int?
+  freshnessRating Int?
+  deliveryRating  Int?
+  comment         String?
+  images          String   @default("[]")
+  isVerified      Boolean  @default(false)
+  adminResponse   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  order           Order?   @relation(fields: [orderId], references: [id])
+  product         Product? @relation(fields: [productId], references: [id])
+  reviewer        User     @relation("Reviewer", fields: [reviewerId], references: [id])
+}
+
+model Wishlist {
+  id        String          @id @default(cuid())
+  userId    String
+  productId String
+  addedAt   DateTime        @default(now())
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      CustomerProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  messageType String    @default("TEXT")
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      String?          @default("{}")
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ModerationAction {
+  id         String       @id @default(cuid())
+  adminId    String
+  targetType String
+  targetId   String
+  action     String
+  reason     String
+  details    String?      @default("{}")
+  createdAt  DateTime     @default(now())
+  admin      AdminProfile @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  targetType String
+  targetId   String?
+  ipAddress  String?
+  userAgent  String?
+  details    String?  @default("{}")
+  createdAt  DateTime @default(now())
+  user       User?    @relation("Auditor", fields: [userId], references: [id])
+}
+
+model SustainabilityScore {
+  id                 String   @id @default(cuid())
+  orderId            String?  @unique
+  sellerId           String
+  sellerType         String
+  localPurchaseScore Float
+  lowWasteScore      Float
+  circularScore      Float
+  totalScore         Float
+  carbonSavedKg      Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+enum UserRole {
+  CUSTOMER
+  FARMER
+  FISHER
+  DELIVERY
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum ProductCategory {
+  VEGETABLES
+  FRUITS
+  OILS
+  SPICES
+  GRAINS
+  DAL
+  SUGAR
+  FRESH_MEATS
+  FLOWERS
+  PICKLES
+  THOKKU
+  HEALTHY_SNACKS
+  FERTILIZERS
+  HONEY
+  SEEDS
+  FARMING_ITEMS
+  SECOND_HAND_MACHINES
+  MILK
+  CURD
+  GHEE
+  BUTTER
+  PANEER
+  BUTTERMILK
+  CONDENSED_MILK
+  LIVE_FISH
+  FRESH_FISH
+  FISH_TYPES
+  FISH_PICKLES
+  DRY_FISH
+  FISH_MASALAS
+  FISH_WASTE
+  FISH_BONE_POWDER
+  FISH_MANURE
+  FISH_COMPOST
+  FISH_FEED
+  NETS
+  BOATS
+  ICE_BOXES
+  ORGANIC_MANURE
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY_FOR_PICKUP
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  HARVESTING
+  CATCHING
+  READY
+  CANCELLED
+  COMPLETED
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  COD
+  UPI
+  BANK_TRANSFER
+  WALLET
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  BOOKING_UPDATE
+  DELIVERY_UPDATE
+  PAYMENT_UPDATE
+  VERIFICATION_UPDATE
+  WARNING
+  SUSPENSION
+  PROMOTIONAL
+  AI_INSIGHT
+  SYSTEM
+}
+
+enum WarningSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ExchangeType {
+  SELL
+  BARTER
+  DONATE
+  EXCHANGE
+}
